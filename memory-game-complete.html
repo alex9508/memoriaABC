@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Memoria - Abecedario Multijugador</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @keyframes gradientBG {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-20px) rotate(10deg);
+            }
+            100% {
+                transform: translateY(0px) rotate(0deg);
+            }
+        }
+
+        .floating-letter {
+            position: fixed;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 40px;
+            pointer-events: none;
+            animation: float 3s ease-in-out infinite;
+            z-index: 1;
+            font-weight: bold;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            max-width: 1000px;
+            width: 100%;
+            position: relative;
+            z-index: 2;
+            backdrop-filter: blur(5px);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .button.blue {
+            background-color: #2196F3;
+        }
+
+        .button.blue:hover {
+            background-color: #1976D2;
+        }
+
+        .players-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .player-card {
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 200px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .player-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .player-card.active {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(74, 185, 77, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(74, 185, 77, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(74, 185, 77, 0);
+            }
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border: 2px solid #ddd;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .card.flipped {
+            background: linear-gradient(135deg, #4a90e2, #357abd);
+            color: white;
+            border-color: #357abd;
+        }
+
+        .winner-message {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+            animation: slideIn 0.5s ease-out;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #playerSetup {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #playerSetup input {
+            padding: 8px;
+            margin: 0 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 60px;
+            transition: all 0.3s;
+        }
+
+        #playerSetup input:focus {
+            border-color: #2196F3;
+            box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+            outline: none;
+        }
+
+        @media (max-width: 768px) {
+            .game-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .game-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="floating-letters"></div>
+    <div class="container">
+        <div class="header">
+            <h1>Juego de Memoria - Abecedario</h1>
+        </div>
+
+        <div id="playerSetup">
+            <label>Número de jugadores: </label>
+            <input type="number" id="playerCount" min="2" max="4" value="2">
+            <button class="button blue" onclick="setupPlayers()">Configurar Jugadores</button>
+        </div>
+
+        <div id="players-container" class="players-container"></div>
+
+        <div class="controls">
+            <button class="button" onclick="startNewGame()">Nuevo Juego</button>
+        </div>
+
+        <div id="winner" class="winner-message"></div>
+        <div class="game-grid" id="gameGrid"></div>
+    </div>
+
+    <script>
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = [];
+        let canFlip = true;
+        let players = [];
+        let currentPlayerIndex = 0;
+        let gameStarted = false;
+
+        function createFloatingLetters() {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const container = document.getElementById('floating-letters');
+            container.innerHTML = '';
+            
+            for (let i = 0; i < 15; i++) {
+                const letter = document.createElement('div');
+                letter.className = 'floating-letter';
+                letter.textContent = letters[Math.floor(Math.random() * letters.length)];
+                
+                letter.style.left = Math.random() * 100 + 'vw';
+                letter.style.top = Math.random() * 100 + 'vh';
+                
+                letter.style.animationDelay = (Math.random() * 2) + 's';
+                letter.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                
+                container.appendChild(letter);
+            }
+        }
+
+        class Player {
+            constructor(name) {
+                this.name = name;
+                this.score = 0;
+                this.moves = 0;
+            }
+        }
+
+        function setupPlayers() {
+            const count = parseInt(document.getElementById('playerCount').value);
+            players = [];
+            for (let i = 0; i < count; i++) {
+                players.push(new Player(`Jugador ${i + 1}`));
+            }
+            updatePlayersUI();
+            startNewGame();
+        }
+
+        function updatePlayersUI() {
+            const container = document.getElementById('players-container');
+            container.innerHTML = '';
+            
+            players.forEach((player, index) => {
+                const playerCard = document.createElement('div');
+                playerCard.className = `player-card ${index === currentPlayerIndex ? 'active' : ''}`;
+                playerCard.innerHTML = `
+                    <h3>${player.name}</h3>
+                    <p>Puntaje: ${player.score}</p>
+                    <p>Movimientos: ${player.moves}</p>
+                `;
+                container.appendChild(playerCard);
+            });
+        }
+
+        function nextPlayer() {
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updatePlayersUI();
+        }
+
+        function createLetters() {
+            const uppercase = Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i));
+            const lowercase = Array.from({length: 26}, (_, i) => String.fromCharCode(97 + i));
+            return [...uppercase, ...lowercase];
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function createCard(letter, index) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.index = index;
+            card.dataset.letter = letter;
+            card.textContent = '?';
+            card.addEventListener('click', () => flipCard(card));
+            return card;
+        }
+
+        function flipCard(card) {
+            if (!gameStarted) return;
+            
+            const index = card.dataset.index;
+            const letter = card.dataset.letter;
+
+            if (!canFlip || 
+                card.classList.contains('flipped') || 
+                matchedPairs.includes(letter.toLowerCase())) {
+                return;
+            }
+
+            card.textContent = letter;
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+                canFlip = false;
+                players[currentPlayerIndex].moves++;
+                checkMatch();
+                updatePlayersUI();
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            const match = card1.dataset.letter.toLowerCase() === 
+                         card2.dataset.letter.toLowerCase() &&
+                         card1.dataset.index !== card2.dataset.index;
+
+            if (match) {
+                matchedPairs.push(card1.dataset.letter.toLowerCase());
+                players[currentPlayerIndex].score++;
+                flippedCards = [];
+                canFlip = true;
+                updatePlayersUI();
+                checkWin();
+            } else {
+                setTimeout(() => {
+                    card1.textContent = '?';
+                    card2.textContent = '?';
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    flippedCards = [];
+                    canFlip = true;
+                    nextPlayer();
+                }, 1000);
+            }
+        }
+
+        function checkWin() {
+            if (matchedPairs.length === 26) {
+                const winner = players.reduce((prev, current) => 
+                    (prev.score > current.score) ? prev : current
+                );
+                
+                const winnerMessage = document.getElementById('winner');
+                winnerMessage.innerHTML = `
+                    ¡Juego terminado!<br>
+                    Ganador: ${winner.name}<br>
+                    Puntaje: ${winner.score} pares
+                `;
+                winnerMessage.style.display = 'block';
+                gameStarted = false;
+            }
+        }
+
+        function startNewGame() {
+            if (players.length === 0) {
+                setupPlayers();
+                return;
+            }
+
+            createFloatingLetters();
+            
+            const gameGrid = document.getElementById('gameGrid');
+            gameGrid.innerHTML = '';
+            cards = shuffle(createLetters());
+            flippedCards = [];
+            matchedPairs = [];
+            currentPlayerIndex = 0;
+            gameStarted = true;
+            canFlip = true;
+            
+            players.forEach(player => {
+                player.score = 0;
+                player.moves = 0;
+            });
+            
+            updatePlayersUI();
+            document.getElementById('winner').style.display = 'none';
+
+            cards.forEach((letter, index) => {
+                gameGrid.appendChild(createCard(letter, index));
+            });
+        }
+
+        // Iniciar el juego
+        createFloatingLetters();
+        setupPlayers();
+    </script>
+</body>
+</html>
